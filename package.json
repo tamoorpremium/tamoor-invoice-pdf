@@ -1,16 +1,14 @@
 {
   "name": "tamoor-invoice-pdf",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node api/invoice.js",
+    "dev": "nodemon api/invoice.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
     "express": "^5.1.0",
     "handlebars": "^4.7.8",
     "node-fetch": "^3.3.2",

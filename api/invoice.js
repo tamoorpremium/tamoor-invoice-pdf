@@ -20,12 +20,12 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const templateHtml = fs.readFileSync(path.join(process.cwd(), 'templates', 'invoice.html'), 'utf8');
 const template = handlebars.compile(templateHtml);
 
-app.get('/invoice', async (req, res) => {
+app.get('/api/invoice', async (req, res) => {
   const orderId = req.query.orderId;
   if (!orderId) return res.status(400).send('Missing orderId');
 
   try {
-    // Fetch invoice JSON from Supabase
+    // Fetch invoice data from Supabase
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_invoice_data`, {
       method: 'POST',
       headers: {
@@ -37,8 +37,8 @@ app.get('/invoice', async (req, res) => {
     });
 
     const data = await response.json();
+    if (!data) return res.status(404).send('Order not found');
 
-    // Optional: set logo URL or other static values
     data.logo_url = 'https://bvnjxbbwxsibslembmty.supabase.co/storage/v1/object/public/product-images/logo.png';
 
     // Render HTML
@@ -53,18 +53,18 @@ app.get('/invoice', async (req, res) => {
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
     await browser.close();
 
-    // Send PDF as response
+    // Send PDF
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename=invoice_${orderId}.pdf`,
       'Content-Length': pdfBuffer.length
     });
     res.send(pdfBuffer);
+
   } catch (err) {
     console.error(err);
     res.status(500).send('Failed to generate PDF');
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Invoice service running on port ${PORT}`));
+export default app;
