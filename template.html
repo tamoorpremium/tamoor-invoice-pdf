@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Invoice</title>
+  <style>
+    body { font-family: 'Arial', sans-serif; margin: 40px; }
+    .header { text-align: center; background: maroon; color: gold; padding: 20px; }
+    .logo { width: 120px; }
+    .title { font-size: 32px; font-weight: bold; margin-top: 10px; }
+    .invoice-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .invoice-table th, .invoice-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    .footer { margin-top: 40px; text-align: center; font-size: 14px; color: #555; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img class="logo" src="{{logo_url}}" />
+    <div class="title">TAMOOR</div>
+    <div class="subtitle">TAX INVOICE</div>
+  </div>
+
+  <h3>Customer Details:</h3>
+  <p>Name: {{customer.name}}<br/>
+     Email: {{customer.email}}<br/>
+     Phone: {{customer.phone}}<br/>
+     Address: {{customer.address.full_name}}, {{customer.address.address}}, {{customer.address.city}} - {{customer.address.pincode}}, {{customer.address.state}}
+  </p>
+
+  <h3>Order Details:</h3>
+  <p>Invoice No: {{invoice.invoice_no}}<br/>
+     Date: {{invoice.date}}<br/>
+     Payment Method: {{payment.method}}<br/>
+     Total: ₹{{order.total}}
+  </p>
+
+  <table class="invoice-table">
+    <thead>
+      <tr>
+        <th>S. No</th>
+        <th>Product Name</th>
+        <th>HSN</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Taxable Value</th>
+        <th>CGST</th>
+        <th>SGST</th>
+        <th>Total (incl. GST)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each order.items}}
+      <tr>
+        <td>{{@index}}</td>
+        <td>{{product_name}}</td>
+        <td>{{hsn_code}}</td>
+        <td>{{quantity}}</td>
+        <td>₹{{unit_price}}</td>
+        <td>₹{{taxable_value}}</td>
+        <td>{{cgst_rate}}% (₹{{cgst_value}})</td>
+        <td>{{sgst_rate}}% (₹{{sgst_value}})</td>
+        <td>₹{{total_with_gst}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <h4>Grand Total: ₹{{order.gst_summary.grand_total}} ({{order.gst_summary.amount_in_words}})</h4>
+
+  <div class="footer">
+    Thank you for shopping with Tamoor – Premium Dry Fruits & Nuts
+  </div>
+</body>
+</html>
