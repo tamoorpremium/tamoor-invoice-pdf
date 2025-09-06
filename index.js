@@ -1,63 +1,70 @@
-import express from "express";
-import puppeteer from "puppeteer";
-import fetch from "node-fetch";
-import fs from "fs";
-import handlebars from "handlebars";
-import cors from "cors";
+import express from 'express';
+import cors from 'cors';
+import puppeteer from 'puppeteer';
+import fetch from 'node-fetch';
+import fs from 'fs';
+import path from 'path';
+import handlebars from 'handlebars';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const SUPABASE_URL = "https://YOUR_SUPABASE_URL";
-const SUPABASE_KEY = "YOUR_SERVICE_ROLE_KEY";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-app.get("/generate-invoice", async (req, res) => {
-  const { order_id } = req.query;
+// Load and compile HTML template
+const templateHtml = fs.readFileSync(path.join(process.cwd(), 'templates', 'invoice.html'), 'utf8');
+const template = handlebars.compile(templateHtml);
 
-  if (!order_id) return res.status(400).send("order_id is required");
+app.get('/invoice', async (req, res) => {
+  const orderId = req.query.orderId;
+  if (!orderId) return res.status(400).send('Missing orderId');
 
   try {
-    // 1️⃣ Fetch invoice JSON from Supabase function
-    const invoiceResp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_invoice_data?p_order_id=${order_id}`, {
+    // Fetch invoice JSON from Supabase
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_invoice_data`, {
+      method: 'POST',
       headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
       },
+      body: JSON.stringify({ p_order_id: parseInt(orderId) })
     });
 
-    const invoiceData = await invoiceResp.json();
+    const data = await response.json();
 
-    // 2️⃣ Load HTML template
-    const templateHtml = fs.readFileSync("template.html", "utf8");
-    const template = handlebars.compile(templateHtml);
-    const html = template(invoiceData);
+    // Optional: set logo URL or other static values
+    data.logo_url = 'https://bvnjxbbwxsibslembmty.supabase.co/storage/v1/object/public/product-images/logo.png';
 
-    // 3️⃣ Launch Puppeteer & generate PDF
+    // Render HTML
+    const html = template(data);
+
+    // Generate PDF
     const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-
-    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
-
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
     await browser.close();
 
-    // 4️⃣ Return PDF
+    // Send PDF as response
     res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=invoice_${order_id}.pdf`,
-      "Content-Length": pdfBuffer.length
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=invoice_${orderId}.pdf`,
+      'Content-Length': pdfBuffer.length
     });
     res.send(pdfBuffer);
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Error generating invoice PDF");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Failed to generate PDF');
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Invoice service running on port ${PORT}`));
