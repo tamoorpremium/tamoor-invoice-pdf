@@ -11,7 +11,7 @@ dotenv.config();
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-// Load and compile template
+// Compile template once
 const templateHtml = fs.readFileSync(path.join(process.cwd(), 'templates', 'invoice.html'), 'utf8');
 const template = handlebars.compile(templateHtml);
 
@@ -30,18 +30,19 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({ p_order_id: parseInt(orderId) })
     });
+
     const data = await response.json();
-    if (!data) return res.status(404).send('Order not found');
+    if (!data || data.length === 0) return res.status(404).send('Order not found');
 
-    data.logo_url = 'https://bvnjxbbwxsibslembmty.supabase.co/storage/v1/object/public/product-images/logo.png';
+    data[0].logo_url = 'https://bvnjxbbwxsibslembmty.supabase.co/storage/v1/object/public/product-images/logo.png';
 
-    const html = template(data);
+    const html = template(data[0]);
 
-    // Launch puppeteer in serverless mode
+    // Launch Chrome in serverless mode
     const browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: chromium.headless
     });
 
     const page = await browser.newPage();
@@ -53,8 +54,8 @@ export default async function handler(req, res) {
     res.setHeader('Content-Disposition', `attachment; filename=invoice_${orderId}.pdf`);
     res.send(pdfBuffer);
 
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error('PDF Generation Error:', error);
     res.status(500).send('Failed to generate PDF');
   }
 }
