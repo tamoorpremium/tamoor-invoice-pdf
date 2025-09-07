@@ -9,14 +9,13 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "https://tamoorb2p.vercel.app"); 
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-   // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*'); // allow all origins (or restrict to your admin domain)
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  // Handle preflight OPTIONS request
-  if (req.method === 'OPTIONS') {
+  // Preflight check
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
