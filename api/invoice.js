@@ -27,6 +27,17 @@ const templateHtml = fs.readFileSync(
 const template = handlebars.compile(templateHtml);
 
 export default async function handler(req, res) {
+
+   // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*'); // allow all origins (or restrict to your admin domain)
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   const orderId = req.query.orderId;
   if (!orderId) return res.status(400).send('Missing orderId');
 
