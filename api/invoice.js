@@ -6,29 +6,20 @@ import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
 import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Keep helper for item indexing
-handlebars.registerHelper('inc', function (value) {
-  return parseInt(value) + 1;
-});
+// Handlebars helpers
+handlebars.registerHelper('inc', (value) => parseInt(value) + 1);
+handlebars.registerHelper('formatCurrency', (value) => `₹${Number(value).toFixed(2)}`);
+handlebars.registerHelper('formatDate', (value) => value ? value.toString().substring(0, 10) : '');
 
-// Optional: format currency
-handlebars.registerHelper('formatCurrency', function (value) {
-  return `₹${Number(value).toFixed(2)}`;
-});
-
-// Register helper to format date (take first 10 chars)
-handlebars.registerHelper('formatDate', function (value) {
-  if (!value) return '';
-  return value.toString().substring(0, 10); // YYYY-MM-DD
-});
-
-// Compile template once
+// Load template
 const templateHtml = fs.readFileSync(
   path.join(process.cwd(), 'templates', 'invoice.html'),
   'utf8'
@@ -40,7 +31,7 @@ export default async function handler(req, res) {
   if (!orderId) return res.status(400).send('Missing orderId');
 
   try {
-    // Fetch invoice data from Supabase
+    // 1. Fetch invoice data from Supabase RPC
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_invoice_data`, {
       method: 'POST',
       headers: {
@@ -52,23 +43,19 @@ export default async function handler(req, res) {
     });
 
     const result = await response.json();
-
     if (!result || typeof result !== 'object') {
-      console.error("Supabase returned:", result);
       return res.status(404).send('Order not found');
     }
 
-    // Enrich data
+    // Add branding/logo
     const data = { ...result };
     data.logo_url =
       'https://bvnjxbbwxsibslembmty.supabase.co/storage/v1/object/public/product-images/logo.png';
 
-    console.log("Invoice data from Supabase:", result);
-
-    // Render template
+    // 2. Render template
     const html = template(data);
 
-    // Launch Puppeteer
+    // 3. Generate PDF
     let browser;
     if (process.platform === 'win32' || process.platform === 'darwin') {
       browser = await puppeteer.launch({ headless: true });
@@ -83,15 +70,35 @@ export default async function handler(req, res) {
 
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle2' });
-
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
-
     await browser.close();
 
-    // Return PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="invoice_${orderId}.pdf"`);
-    res.status(200).end(pdfBuffer);
+    // 4. Upload to Supabase (private bucket)
+    const filename = `invoice_${orderId}.pdf`;
+    const { error: uploadError } = await supabase
+      .storage
+      .from('invoices') // 👈 make sure you created this bucket
+      .upload(filename, pdfBuffer, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Upload Error:", uploadError);
+      return res.status(500).send('Failed to upload invoice');
+    }
+
+    // 5. Save filename in orders table
+    await supabase
+      .from('orders')
+      .update({ invoice_file: filename })
+      .eq('id', orderId);
+
+    // 6. Respond with success JSON
+    res.status(200).json({
+      message: "Invoice generated & uploaded",
+      file: filename
+    });
 
   } catch (error) {
     console.error('PDF Generation Error:', error);
