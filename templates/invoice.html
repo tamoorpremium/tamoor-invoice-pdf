@@ -281,7 +281,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
                 <td class="text-right">{{taxable_value}}</td>
                 <td class="text-right">{{cgst_value}}</td>
                 <td class="text-right">{{sgst_value}}</td>
-                <td class="text-right">{{total_with_gst}}</td>
+                <td class="text-right">{{total_with_gst}}/-</td>
             </tr>
             {{/each}}
         </tbody>
@@ -296,20 +296,20 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
         <div class="totals-box">
             <div class="total-row">
                 <span>Total (incl GST):</span>
-                <span>{{order.subtotal}}</span>
+                <span>{{order.subtotal}}/-</span>
             </div>
             <div class="total-row">
                 <span>Discount Applied:</span>
-                <span>-{{order.discount}}</span>
+                <span>-{{order.discount}}/-</span>
             </div>
             <div class="total-row">
                 <span>Delivery Fee:</span>
-                <span>+{{order.delivery_fee}}</span>
+                <span>+{{order.delivery_fee}}/-</span>
             </div>
             <div class="total-separator"></div>
             <div class="total-row final-total">
                 <span>Net Total:</span>
-                <span>{{order.total}}</span>
+                <span>₹{{order.total}}/-</span>
             </div>
         </div>
     </div>
